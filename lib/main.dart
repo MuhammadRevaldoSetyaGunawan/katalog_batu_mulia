@@ -1,64 +1,212 @@
 import 'package:flutter/material.dart';
-import 'detail_page.dart';
-
-// List Global untuk menyimpan item pesanan yang dibeli dari detail page
-List<Map<String, String>> ordersList = [];
 
 void main() {
-  // Entry point aplikasi Flutter
-  runApp(
-    // MaterialApp sebagai widget utama pembungkus aplikasi
-    const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: MainNavigation(), // Menjadikan MainNavigation sebagai halaman awal
-    ),
-  );
+  // Widget utama untuk menjalankan aplikasi Flutter
+  runApp(const MyApp());
 }
 
-// StatefulWidget untuk mengelola navigasi BottomNavigationBar
-class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key});
-
-  @override
-  State<MainNavigation> createState() => _MainNavigationState();
-}
-
-class _MainNavigationState extends State<MainNavigation> {
-  // Index untuk menandai tab yang sedang aktif
-  int _selectedIndex = 0;
-
-  // List kumpulan halaman yang dipanggil berdasarkan _selectedIndex
-  final List<Widget> _pages = const [
-    CatalogPage(), // Index 0: Katalog
-    PesananPage(), // Index 1: Pesanan
-    ProfilPage(),  // Index 2: Profil Saya
-  ];
+// Widget StatelessWidget sebagai root utama aplikasi
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Scaffold sebagai wadah utama layout halaman
+    // MaterialApp menyediakan konfigurasi tema dan navigasi aplikasi
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Katalog Batu Mulia',
+      // ThemeData mengatur konfigurasi tema warna
+      theme: ThemeData(
+        primarySwatch: Colors.teal,
+        useMaterial3: false,
+      ),
+      // Home mengarahkan ke halaman utama (MainPage)
+      home: const MainPage(),
+    );
+  }
+}
+
+// Model data Batu Mulia untuk struktur objek produk
+class Gemstone {
+  final String id;
+  final String name;
+  final String category;
+  final String rating;
+  final int price;
+  final String image;
+  int quantity;
+
+  Gemstone({
+    required this.id,
+    required this.name,
+    required this.category,
+    required this.rating,
+    required this.price,
+    required this.image,
+    this.quantity = 1,
+  });
+}
+
+// Widget StatefulWidget untuk mengelola state halaman & keranjang belanja
+class MainPage extends StatefulWidget {
+  const MainPage({super.key});
+
+  @override
+  State<MainPage> createState() => _MainPageState();
+}
+
+class _MainPageState extends State<MainPage> {
+  int _selectedIndex = 0; // State indeks tab navigasi bawah
+
+  // List data produk batu mulia
+  final List<Gemstone> _products = [
+    Gemstone(
+      id: '1',
+      name: 'Batu Zamrud (Emerald)',
+      category: 'Batu Permata',
+      rating: '4.9',
+      price: 15000000,
+      image: 'assets/Zamrud_green.jpeg',
+    ),
+    Gemstone(
+      id: '2',
+      name: 'Batu Safir Biru (Blue Sapphire)',
+      category: 'Batu Permata',
+      rating: '4.8',
+      price: 12500000,
+      image: 'assets/safirblue.jpeg', // Diberi titik pada ekstensi .jpeg
+    ),
+    Gemstone(
+      id: '3',
+      name: 'Batu Ruby Merah Delima',
+      category: 'Batu Permata',
+      rating: '5.0',
+      price: 18000000,
+      image: 'assets/red_ruby.jpeg',
+    ),
+  ];
+
+  // List keranjang belanja
+  final List<Gemstone> _cartItems = [];
+
+  // Fungsi menambah produk ke keranjang
+  void _addToCart(Gemstone product) {
+    setState(() {
+      int index = _cartItems.indexWhere((item) => item.id == product.id);
+      if (index != -1) {
+        _cartItems[index].quantity++;
+      } else {
+        _cartItems.add(
+          Gemstone(
+            id: product.id,
+            name: product.name,
+            category: product.category,
+            rating: product.rating,
+            price: product.price,
+            image: product.image,
+            quantity: 1,
+          ),
+        );
+      }
+    });
+
+    // Widget ScaffoldMessenger untuk menampilkan notifikasi SnackBar
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${product.name} dimasukkan ke keranjang'),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
+  // Fungsi menambah kuantitas item
+  void _incrementQuantity(int index) {
+    setState(() {
+      _cartItems[index].quantity++;
+    });
+  }
+
+  // Fungsi mengurangi kuantitas item
+  void _decrementQuantity(int index) {
+    setState(() {
+      if (_cartItems[index].quantity > 1) {
+        _cartItems[index].quantity--;
+      } else {
+        _cartItems.removeAt(index);
+      }
+    });
+  }
+
+  // Getter menghitung total harga keranjang
+  int get _totalPrice {
+    return _cartItems.fold(0, (sum, item) => sum + (item.price * item.quantity));
+  }
+
+  // Fungsi checkout berpindah ke halaman sukses
+  void _checkout() {
+    if (_cartItems.isEmpty) return;
+
+    int total = _totalPrice;
+
+    // Navigator untuk navigasi ke SuccessPage
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SuccessPage(
+          totalAmount: total,
+          onReset: () {
+            setState(() {
+              _cartItems.clear();
+              _selectedIndex = 0;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // List berisi tampilan tiap tab aplikasi
+    final List<Widget> pages = [
+      BerandaPage(products: _products, onAddToCart: _addToCart),
+      KeranjangPage(
+        cartItems: _cartItems,
+        totalPrice: _totalPrice,
+        onIncrement: _incrementQuantity,
+        onDecrement: _decrementQuantity,
+        onCheckout: _checkout,
+      ),
+      const ProfilPage(),
+    ];
+
+    // Widget Scaffold menyediakan struktur dasar layout (body & bottom nav)
     return Scaffold(
-      // Body menampilkan widget halaman sesuai tab yang dipilih
-      body: _pages[_selectedIndex],
-      // BottomNavigationBar untuk navigasi antarhalaman
+      backgroundColor: const Color(0xFFF1F5F9),
+      // Widget SafeArea memastikan konten berada di area aman layar
+      body: SafeArea(child: pages[_selectedIndex]),
+      // Widget BottomNavigationBar untuk menu navigasi bawah
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
+        selectedItemColor: const Color(0xFF0F172A),
+        unselectedItemColor: Colors.grey,
         onTap: (index) {
-          // Mengubah index aktif dan merender ulang UI saat tab diklik
           setState(() {
             _selectedIndex = index;
           });
         },
-        selectedItemColor: const Color(0xFF1E293B),
         items: const [
+          // Widget BottomNavigationBarItem untuk tab Beranda
           BottomNavigationBarItem(
-            icon: Icon(Icons.store),
-            label: 'Katalog',
+            icon: Icon(Icons.home),
+            label: 'Beranda',
           ),
+          // Widget BottomNavigationBarItem untuk tab Keranjang
           BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_bag),
-            label: 'Pesanan',
+            icon: Icon(Icons.shopping_cart),
+            label: 'Keranjang',
           ),
+          // Widget BottomNavigationBarItem untuk tab Profil
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
             label: 'Profil',
@@ -69,424 +217,439 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 }
 
-// =========================================================================
-// 1. HALAMAN KATALOG
-// =========================================================================
-class CatalogPage extends StatefulWidget {
-  const CatalogPage({super.key});
+// -----------------------------------------------------------------------------
+// 1. HALAMAN BERANDA
+// -----------------------------------------------------------------------------
+class BerandaPage extends StatelessWidget {
+  final List<Gemstone> products;
+  final Function(Gemstone) onAddToCart;
 
-  @override
-  State<CatalogPage> createState() => _CatalogPageState();
-}
-
-class _CatalogPageState extends State<CatalogPage> {
-  // Data dummy item batu mulia
-  final List<Map<String, String>> gems = const [
-    {
-      'name': 'Batu Zamrud Colombia',
-      'price': 'Rp 15.000.000',
-      'category': 'Natural Emerald',
-      'rating': '4.9',
-      'image': 'assets/Zamrud_green.jpeg',
-    },
-    {
-      'name': 'Batu Safir Biru Ceylon',
-      'price': 'Rp 22.500.000',
-      'category': 'Royal Blue Sapphire',
-      'rating': '5.0',
-      'image': 'assets/safirblue_jpeg',
-    },
-    {
-      'name': 'Batu Delima Burma',
-      'price': 'Rp 18.000.000',
-      'category': 'Pigeon Blood Ruby',
-      'rating': '4.9',
-      'image': 'assets/red_ruby.jpeg',
-    },
-  ];
+  const BerandaPage({
+    super.key,
+    required this.products,
+    required this.onAddToCart,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      // AppBar bagian atas halaman katalog
-      appBar: AppBar(
-        title: const Text(
-          'Katalog Batu Mulia',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+    // Widget Column menyusun elemen secara vertikal
+    return Column(
+      children: [
+        // Widget Padding memberi jarak di sekitar TextField
+        Padding(
+          padding: const EdgeInsets.all(12.0),
+          // Widget TextField untuk pencarian
+          child: TextField(
+            decoration: InputDecoration(
+              hintText: 'Cari Batu Mulia...',
+              prefixIcon: const Icon(Icons.search), // Widget Icon pencarian
+              fillColor: Colors.white,
+              filled: true,
+              contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.0),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
         ),
-        backgroundColor: const Color(0xFF1E293B),
-        elevation: 0,
-      ),
-      // SingleChildScrollView agar konten halaman dapat di-scroll
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // TextField untuk pencarian produk
-              TextField(
-                decoration: InputDecoration(
-                  hintText: 'Cari batu mulia...',
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
+        // Widget Expanded mengisi sisa ruang layar
+        Expanded(
+          // Widget ListView.builder untuk membuat daftar scrollable
+          child: ListView.builder(
+            itemCount: products.length,
+            itemBuilder: (context, index) {
+              final product = products[index];
+              // Widget Container sebagai kartu tempat produk
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
                 ),
-              ),
-              const SizedBox(height: 20),
-              // Text judul sub-kategori
-              const Text(
-                'Koleksi Eksklusif',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              // ListView.builder untuk merender daftar item batu mulia secara dinamis
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: gems.length,
-                itemBuilder: (context, index) {
-                  final gem = gems[index];
-                  final String imagePath = gem['image']!;
-
-                  // Container pembungkus kartu item
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.shade300,
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                // Widget Row menyusun gambar dan detail produk secara horizontal
+                child: Row(
+                  children: [
+                    // Widget ClipRRect untuk membuat sudut gambar melengkung
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      // Widget Image.asset menampilkan gambar dari assets
+                      child: Image.asset(
+                        product.image,
+                        width: 75,
+                        height: 75,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            _buildPlaceholder(),
+                      ),
                     ),
-                    // InkWell memberi efek sentuhan dan event onTap
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () {
-                        // Navigator.push untuk berpindah ke DetailPage
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DetailPage(
-                              name: gem['name']!,
-                              price: gem['price']!,
-                              category: gem['category']!,
-                              rating: gem['rating']!,
-                              image: imagePath,
-                            ),
-                          ),
-                        );
-                      },
-                      child: Row(
+                    const SizedBox(width: 12), // Widget SizedBox memberi jarak horizontal
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Stack menumpuk badge rating di atas gambar
-                          Stack(
-                            children: [
-                              ClipRRect(
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(16),
-                                  bottomLeft: Radius.circular(16),
-                                ),
-                                child: Image.asset(
-                                  imagePath,
-                                  width: 110,
-                                  height: 110,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
-                                ),
-                              ),
-                              Positioned(
-                                top: 8,
-                                left: 8,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.7),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.star, color: Colors.amber, size: 12),
-                                      const SizedBox(width: 2),
-                                      Text(
-                                        gem['rating']!,
-                                        style: const TextStyle(color: Colors.white, fontSize: 10),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
+                          // Widget Text untuk nama produk
+                          Text(
+                            product.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                           ),
-                          const SizedBox(width: 12),
-                          // Expanded mengisi sisa ruang secara fleksibel
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  gem['category']!,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  gem['name']!,
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  gem['price']!,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF0D9488),
-                                  ),
-                                ),
-                              ],
+                          const SizedBox(height: 2),
+                          // Widget Text untuk harga produk
+                          Text(
+                            'Rp${product.price}',
+                            style: const TextStyle(
+                              color: Color(0xFF0D9488),
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const Padding(
-                            padding: EdgeInsets.all(12.0),
-                            child: Icon(
-                              Icons.arrow_forward_ios,
-                              size: 16,
-                              color: Colors.grey,
+                          const SizedBox(height: 8),
+                          // Widget ElevatedButton tombol tambah ke keranjang
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0F172A),
+                              minimumSize: const Size(double.infinity, 32),
+                              padding: EdgeInsets.zero,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                            onPressed: () => onAddToCart(product),
+                            child: const Text(
+                              'Masukkan Keranjang',
+                              style: TextStyle(fontSize: 12, color: Colors.white),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  );
-                },
-              ),
-            ],
+                  ],
+                ),
+              );
+            },
           ),
         ),
-      ),
+      ],
     );
   }
 
-  // Widget pendukung untuk gambar placeholder jika gambar gagal dimuat
+  // Widget pembantu jika gambar aset gagal dimuat
   Widget _buildPlaceholder() {
     return Container(
-      width: 110,
-      height: 110,
-      color: Colors.grey.shade200,
-      child: const Icon(Icons.diamond, size: 50, color: Color(0xFF1E293B)),
+      width: 75,
+      height: 75,
+      color: const Color(0xFF0F172A),
+      child: const Icon(Icons.diamond, color: Colors.amberAccent),
     );
   }
 }
 
-// =========================================================================
-// 2. HALAMAN PESANAN
-// =========================================================================
-class PesananPage extends StatefulWidget {
-  const PesananPage({super.key});
+// -----------------------------------------------------------------------------
+// 2. HALAMAN KERANJANG
+// -----------------------------------------------------------------------------
+class KeranjangPage extends StatelessWidget {
+  final List<Gemstone> cartItems;
+  final int totalPrice;
+  final Function(int) onIncrement;
+  final Function(int) onDecrement;
+  final VoidCallback onCheckout;
 
-  @override
-  State<PesananPage> createState() => _PesananPageState();
-}
+  const KeranjangPage({
+    super.key,
+    required this.cartItems,
+    required this.totalPrice,
+    required this.onIncrement,
+    required this.onDecrement,
+    required this.onCheckout,
+  });
 
-class _PesananPageState extends State<PesananPage> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      // AppBar Halaman Pesanan
-      appBar: AppBar(
-        title: const Text(
-          'Daftar Pesanan',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-        backgroundColor: const Color(0xFF1E293B),
-        elevation: 0,
-      ),
-      // Kondisi ternary: Menampilkan pesan kosong atau daftar pesanan jika ada
-      body: ordersList.isEmpty
-          ? Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
-              Icon(
-                Icons.shopping_bag_outlined,
-                size: 80,
-                color: Color(0xFF1E293B),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: TextField(
+            decoration: InputDecoration(
+              hintText: 'Cari di keranjang...',
+              prefixIcon: const Icon(Icons.search),
+              fillColor: Colors.white,
+              filled: true,
+              contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.0),
+                borderSide: BorderSide.none,
               ),
-              SizedBox(height: 16),
-              Text(
-                'Belum Ada Pesanan',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Pesanan koleksi batu mulia Anda akan ditampilkan di halaman ini.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
-              ),
-            ],
+            ),
           ),
         ),
-      )
-          : ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: ordersList.length,
-        itemBuilder: (context, index) {
-          final order = ordersList[index];
-          // Card untuk menampilkan kontainer berbentuk kartu pesanan
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            // ListTile membuat tata letak rapi dengan leading, title, subtitle, dan trailing
-            child: ListTile(
-              contentPadding: const EdgeInsets.all(12),
-              leading: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  order['image'] ?? '',
-                  width: 60,
-                  height: 60,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    width: 60,
-                    height: 60,
-                    color: Colors.grey.shade300,
-                    child: const Icon(Icons.diamond, color: Color(0xFF1E293B)),
-                  ),
+        Expanded(
+          child: cartItems.isEmpty
+              ? const Center(
+            // Widget Center untuk menempatkan pesan kosong di tengah
+            child: Text('Keranjang Belanja Kosong'),
+          )
+              : ListView.builder(
+            itemCount: cartItems.length,
+            itemBuilder: (context, index) {
+              final item = cartItems[index];
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
                 ),
-              ),
-              title: Text(
-                order['name'] ?? '',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Column(
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.asset(
+                        item.image,
+                        width: 65,
+                        height: 65,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            _buildPlaceholder(),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Rp${item.price}',
+                            style: const TextStyle(color: Color(0xFF0D9488)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        // Widget IconButton tombol kurangi kuantitas
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle_outline, size: 22),
+                          onPressed: () => onDecrement(index),
+                        ),
+                        Text(
+                          '${item.quantity}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        // Widget IconButton tombol tambah kuantitas
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline, size: 22),
+                          onPressed: () => onIncrement(index),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        // Container area bar bagian bawah keranjang
+        Container(
+          padding: const EdgeInsets.all(16),
+          color: Colors.white,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 4),
-                  Text('Jumlah: ${order['quantity']}x'),
-                  const SizedBox(height: 2),
+                  const Text('Total', style: TextStyle(fontSize: 12, color: Colors.grey)),
                   Text(
-                    order['price'] ?? '',
+                    'Rp$totalPrice',
                     style: const TextStyle(
-                      color: Color(0xFF0D9488),
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Color(0xFF0F172A),
                     ),
                   ),
                 ],
               ),
-              trailing: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'Berhasil',
-                  style: TextStyle(
-                    color: Colors.green.shade800,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
+              // Widget ElevatedButton tombol Checkout
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0F172A),
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
+                onPressed: cartItems.isEmpty ? null : onCheckout,
+                child: const Text(
+                  'Checkout',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
               ),
-            ),
-          );
-        },
-      ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPlaceholder() {
+    return Container(
+      width: 65,
+      height: 65,
+      color: const Color(0xFF0F172A),
+      child: const Icon(Icons.diamond, color: Colors.amberAccent),
     );
   }
 }
 
-// =========================================================================
+// -----------------------------------------------------------------------------
 // 3. HALAMAN PROFIL
-// =========================================================================
+// -----------------------------------------------------------------------------
 class ProfilPage extends StatelessWidget {
   const ProfilPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Scaffold sebagai wadah utama halaman profil
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      // AppBar bagian atas halaman profil
-      appBar: AppBar(
-        title: const Text(
-          'Profil Saya',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-        backgroundColor: const Color(0xFF1E293B),
-        elevation: 0,
+    return Padding(
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        children: [
+          const SizedBox(height: 20),
+          // Widget CircleAvatar foto profil lingkaran
+          const CircleAvatar(
+            radius: 50,
+            backgroundColor: Color(0xFF0F172A),
+            child: Icon(Icons.person, size: 60, color: Colors.white),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Muhammad Revaldo Setya Gunawan',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'NIM: 2309106124',
+            style: TextStyle(fontSize: 15, color: Colors.grey.shade700),
+          ),
+          Text(
+            'Informatika - Universitas Mulawarman',
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 24),
+          // Widget Divider garis pemisah horizontal
+          const Divider(),
+          const SizedBox(height: 10),
+          // Widget Card kontainer email
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            // Widget ListTile format list dengan ikon
+            child: const ListTile(
+              leading: Icon(Icons.email, color: Color(0xFF0F172A)),
+              title: Text('Email'),
+              subtitle: Text('revaldo@mhs.unmul.ac.id'),
+            ),
+          ),
+          // Widget Card kontainer praktikum
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            child: const ListTile(
+              leading: Icon(Icons.class_, color: Color(0xFF0F172A)),
+              title: Text('Praktikum'),
+              subtitle: Text('Pemrograman Bergerak - Modul 4'),
+            ),
+          ),
+        ],
       ),
-      // SingleChildScrollView agar konten bisa di-scroll
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            // CircleAvatar untuk foto/ikon profil bundar
-            const CircleAvatar(
-              radius: 50,
-              backgroundColor: Color(0xFF1E293B),
-              child: Icon(Icons.person, size: 60, color: Colors.white),
-            ),
-            const SizedBox(height: 16),
-            // Text nama lengkap
-            const Text(
-              'Muhammad Revaldo Setya Gunawan',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            // Text program studi
-            Text(
-              'Informatika - Universitas Mulawarman',
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 24),
-            // Card pembungkus informasi detail akun
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 4. HALAMAN SUKSES CHECKOUT
+// -----------------------------------------------------------------------------
+class SuccessPage extends StatelessWidget {
+  final int totalAmount;
+  final VoidCallback onReset;
+
+  const SuccessPage({
+    super.key,
+    required this.totalAmount,
+    required this.onReset,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Widget Scaffold menyediakan struktur latar belakang halaman
+    return Scaffold(
+      backgroundColor: const Color(0xFFF1F5F9),
+      // Widget Center menempatkan konten di tengah layar
+      body: Center(
+        // Widget Padding memberi jarak tepi
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          // Widget Column menyusun elemen secara vertikal
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Widget CircleAvatar ikon centang sukses
+              const CircleAvatar(
+                radius: 45,
+                backgroundColor: Color(0xFF0F172A),
+                child: Icon(
+                  Icons.check,
+                  size: 50,
+                  color: Colors.white,
+                ),
               ),
-              child: Column(
-                children: const [
-                  ListTile(
-                    leading: Icon(Icons.badge, color: Color(0xFF1E293B)),
-                    title: Text('NIM'),
-                    subtitle: Text('2309106124'),
-                  ),
-                  Divider(height: 1),
-                  ListTile(
-                    leading: Icon(Icons.email, color: Color(0xFF1E293B)),
-                    title: Text('Email'),
-                    subtitle: Text('praktikan@informatika.unmul.ac.id'),
-                  ),
-                  Divider(height: 1),
-                  ListTile(
-                    leading: Icon(Icons.location_on, color: Color(0xFF1E293B)),
-                    title: Text('Lokasi'),
-                    subtitle: Text('Samarinda, Kalimantan Timur'),
-                  ),
-                ],
+              const SizedBox(height: 24),
+              // Widget Text label total
+              const Text(
+                'Total',
+                style: TextStyle(fontSize: 18, color: Colors.grey),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              // Widget Text nominal angka total bayar
+              Text(
+                'Rp$totalAmount',
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 32),
+              // Widget SizedBox pengatur lebar tombol
+              SizedBox(
+                width: double.infinity,
+                // Widget ElevatedButton tombol kembali ke beranda
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F172A),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: () {
+                    onReset();
+                    Navigator.pop(context);
+                  },
+                  child: const Text(
+                    'Kembali',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
